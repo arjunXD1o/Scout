@@ -110,6 +110,20 @@ def calculate_influencer_valuation(
 
     fair_pricing_str = f"Fair {format_inr_currency(rate_low)}–{format_inr_currency(rate_high)}"
 
+    # Rate card deliverables
+    rate_reel = format_inr_currency(max(1500, int(rate_low * 0.9)))
+    rate_story = format_inr_currency(max(800, int(rate_low * 0.32)))
+    rate_ugc = format_inr_currency(max(1200, int(rate_low * 0.7)))
+
+    # Estimated Reel views
+    avg_views_min = max(1000, int(followers * (er / 100.0) * 8.5))
+    avg_views_max = max(2000, int(followers * (er / 100.0) * 16.0))
+    est_views_str = f"{format_indian_number(avg_views_min)}–{format_indian_number(avg_views_max)} views"
+
+    # Audience Quality Score (AQS)
+    h_aqs = (h % 15)
+    aqs_pct = 82 + h_aqs  # 82% to 96% authentic
+
     res = {
         'followers_formatted': f"{format_indian_number(followers)} followers",
         'engagement_rate': f"{er:.2f}% ER",
@@ -117,9 +131,18 @@ def calculate_influencer_valuation(
         'fair_pricing': fair_pricing_str,
         'fair_price_low': rate_low,
         'fair_price_high': rate_high,
+        'rate_reel': rate_reel,
+        'rate_story': rate_story,
+        'rate_ugc': rate_ugc,
+        'est_avg_views': est_views_str,
+        'aqs_score': f"{aqs_pct}%",
     }
     demo = calculate_audience_demographics(username, bio=bio, followers=followers)
     res.update(demo)
+    
+    # Creator Persona Traits & Goals for User Persona layout
+    persona = calculate_creator_persona(username, followers, bio, res.get('primary_niche', ''))
+    res.update(persona)
     return res
 
 
@@ -241,4 +264,58 @@ def calculate_audience_demographics(
         'age_35_plus': f"{age_35_plus}%",
         'primary_niche': " · ".join(detected_niches),
         'collab_readiness': "Immediate (Business Email in Bio)" if 'gmail' in text or 'collab' in text else "Via Instagram DM"
+    }
+
+
+def calculate_creator_persona(username: str, followers: int, bio: str, niche: str) -> Dict:
+    """Calculate creator persona spectrums, campaign goals, and quote block."""
+    h = int(hashlib.md5(username.lower().encode()).hexdigest()[:6], 16)
+    
+    t1 = 65 + (h % 26)         # Operational vs Creative
+    t2 = 38 + ((h >> 2) % 32)  # Fast Decision Maker vs Detail Focused
+    t3 = 70 + ((h >> 4) % 22)  # Customer Focused vs Business Driven
+    
+    bio_clean = bio.replace('\n', ' ').strip()
+    if 'skincare' in niche.lower() or 'beauty' in niche.lower():
+        goals = [
+            "Authentic skincare routine & honest product trials",
+            "High conversion in regional D2C beauty shoppers",
+            "Relatable UGC video assets for paid ad whitelisting"
+        ]
+        quote = bio_clean if len(bio_clean) > 20 else "Creating authentic beauty & skincare routines that solve real everyday problems for my community."
+    elif 'fashion' in niche.lower():
+        goals = [
+            "Affordable outfit styling & seasonal haul integrations",
+            "Drive direct traffic via story swipe-up/link stickers",
+            "Showcase product fits, fabric quality, and real-life looks"
+        ]
+        quote = bio_clean if len(bio_clean) > 20 else "Fashion that looks stylish, realistic, and accessible without breaking the bank."
+    elif 'tech' in niche.lower() or 'gaming' in niche.lower():
+        goals = [
+            "In-depth gadget benchmarks & hands-on setup reviews",
+            "High tech-enthusiast engagement & purchase intent",
+            "Clear feature breakdowns with zero brand fluff"
+        ]
+        quote = bio_clean if len(bio_clean) > 20 else "Cutting through the marketing noise to deliver honest performance benchmarks and practical setups."
+    else:
+        goals = [
+            "High engagement reels with organic viral reach",
+            "Genuine brand recommendations that build long-term trust",
+            "Active community discussions and direct DM inquiries"
+        ]
+        quote = bio_clean if len(bio_clean) > 20 else "Connecting brands with a loyal, active audience through authentic storytelling and creative content."
+
+    return {
+        'trait1_left': "Operational",
+        'trait1_right': "Creative",
+        'trait1_val': t1,
+        'trait2_left': "Fast Decision Maker",
+        'trait2_right': "Detail Focused",
+        'trait2_val': t2,
+        'trait3_left': "Customer Focused",
+        'trait3_right': "Business Driven",
+        'trait3_val': t3,
+        'persona_goals': goals,
+        'persona_quote': f'"{quote}"',
+        'persona_archetype': f"Creator · {niche.split(' · ')[0] if niche else 'Influencer'}"
     }
