@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import httpx
 
 from app.scrapers.stealth import random_user_agent, random_delay
+from app.analytics import extract_agency_domain
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,8 @@ class LeadEnricher:
         company_domain = None
         if not website_is_useful or not site_emails:
             company_domain = self._find_company_domain(lead_data)
+            if not company_domain:
+                company_domain = extract_agency_domain(lead_data.get('bio', ''))
             if company_domain:
                 enriched['company_domain'] = company_domain
                 if not website_is_useful:

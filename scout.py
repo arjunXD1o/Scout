@@ -15,6 +15,7 @@ if sys.platform == 'win32':
 sys.path.insert(0, str(Path(__file__).parent))
 
 from app import __version__
+from app.analytics import calculate_influencer_valuation
 
 _verbose = '--verbose' in sys.argv or '-V' in sys.argv
 logging.basicConfig(
@@ -262,13 +263,38 @@ def _profile_card(profile: dict):
     if profile.get('full_name'):
         lines.append(f"[bold white]{profile['full_name'][:50]}[/bold white]")
 
-    stats = []
-    if profile.get('follower_count'):
-        stats.append(f"[white]{profile['follower_count']:,}[/white] [dim]followers[/dim]")
-    if profile.get('following_count'):
-        stats.append(f"[white]{profile['following_count']:,}[/white] [dim]following[/dim]")
-    if stats:
-        lines.append("  ·  ".join(stats))
+    followers = profile.get('follower_count', 0) or profile.get('subscribers', 0) or 0
+    if not profile.get('engagement_rate') and followers > 0:
+        val = calculate_influencer_valuation(
+            profile.get('username', '') or profile.get('channel_name', ''),
+            followers,
+            platform=profile.get('platform', 'instagram'),
+            is_verified=profile.get('is_verified', False),
+            bio=profile.get('bio', '') or profile.get('description', '')
+        )
+        profile.update(val)
+
+    if profile.get('followers_formatted') and profile.get('engagement_rate'):
+        pricing_stats = [
+            f"[bold white]{profile['followers_formatted']}[/bold white]",
+            f"[cyan]{profile['engagement_rate']}[/cyan]",
+            f"[dim]{profile.get('cost_per_view', '')}[/dim]"
+        ]
+        lines.append("  ·  ".join([s for s in pricing_stats if s]))
+        if profile.get('fair_pricing'):
+            lines.append(f"[bold green]{profile['fair_pricing']}[/bold green]")
+        if profile.get('gender_female'):
+            lines.append(f"[dim]Audience:[/dim] [white]{profile['gender_female']} Female · {profile['gender_male']} Male[/white] [dim]│ Top Age: 18–24 ({profile.get('age_18_24', '58%')})[/dim]")
+        if profile.get('audience_region_south'):
+            lines.append(f"[dim]Regions:[/dim] [white]South: {profile['audience_region_south']} · West: {profile['audience_region_west']} · North: {profile['audience_region_north']} · East: {profile['audience_region_east']}[/white]")
+    else:
+        stats = []
+        if profile.get('follower_count'):
+            stats.append(f"[white]{profile['follower_count']:,}[/white] [dim]followers[/dim]")
+        if profile.get('following_count'):
+            stats.append(f"[white]{profile['following_count']:,}[/white] [dim]following[/dim]")
+        if stats:
+            lines.append("  ·  ".join(stats))
 
     email = profile.get('email', '')
     if profile.get('bio'):
@@ -288,6 +314,9 @@ def _profile_card(profile: dict):
     if profile.get('phone'):
         lines.append(f"[dim]{profile['phone']}[/dim]")
 
+    if profile.get('profile_pic_url'):
+        lines.append(f"[dim]Photo: [link={profile['profile_pic_url']}]View Image[/link][/dim]")
+
     username = profile.get('username', '?')
     console.print(Panel(
         "\n".join(lines) if lines else "[dim]No data[/dim]",
@@ -296,7 +325,7 @@ def _profile_card(profile: dict):
         border_style=ACCENT_DIM,
         box=box.ROUNDED,
         padding=(0, 2),
-        width=64
+        width=76
     ))
 
 
@@ -495,6 +524,16 @@ def _standard_scrape_loop(scraper_func, items, label_prefix="@", delay_range=Non
                     logging.getLogger().setLevel(prev_level)
 
                 if profile:
+                    followers = profile.get('follower_count', 0) or profile.get('subscribers', 0) or 0
+                    if followers > 0:
+                        val = calculate_influencer_valuation(
+                            profile.get('username', '') or profile.get('channel_name', ''),
+                            followers,
+                            platform=profile.get('platform', 'instagram'),
+                            is_verified=profile.get('is_verified', False),
+                            bio=profile.get('bio', '') or profile.get('description', '')
+                        )
+                        profile.update(val)
                     profiles.append(profile)
                     progress.stop()
                     _profile_card(profile)
@@ -834,6 +873,16 @@ def scrape_from_file():
                         logging.getLogger().setLevel(prev_level)
 
                     if profile:
+                        followers = profile.get('follower_count', 0) or profile.get('subscribers', 0) or 0
+                        if followers > 0:
+                            val = calculate_influencer_valuation(
+                                profile.get('username', '') or profile.get('channel_name', ''),
+                                followers,
+                                platform=profile.get('platform', platform_key),
+                                is_verified=profile.get('is_verified', False),
+                                bio=profile.get('bio', '') or profile.get('description', '')
+                            )
+                            profile.update(val)
                         profiles.append(profile)
                         successful += 1
                         follower_count = profile.get('follower_count', 0) or profile.get('subscribers', 0) or 0

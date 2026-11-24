@@ -22,10 +22,11 @@ from app.scrapers.utils import extract_email, extract_phone, parse_abbreviated_n
 logger = logging.getLogger(__name__)
 
 MOBILE_USER_AGENTS = [
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
     'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
-    'Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
 ]
 
 
@@ -191,8 +192,9 @@ def _extract_profile_from_html(html: str, username: str) -> Optional[Dict]:
             break
 
     meta_patterns = [
-        r'content="([\d.,]+[KMB]?)\s*Followers?,\s*([\d.,]+[KMB]?)\s*Following,\s*([\d.,]+[KMB]?)\s*Posts?',
+        r'content=["\']([\d.,]+[KMB]?)\s*Followers?,\s*([\d.,]+[KMB]?)\s*Following,\s*([\d.,]+[KMB]?)\s*Posts?',
         r'([\d.,]+[KMB]?)\s*Followers?\s*[,·]\s*([\d.,]+[KMB]?)\s*Following\s*[,·]\s*([\d.,]+[KMB]?)\s*Posts?',
+        r'Followers:\s*([\d.,]+[KMB]?)\s*,\s*Following:\s*([\d.,]+[KMB]?)\s*,\s*Posts:\s*([\d.,]+[KMB]?)',
     ]
     for pattern in meta_patterns:
         meta_match = re.search(pattern, html, re.IGNORECASE)
@@ -238,6 +240,19 @@ def _extract_profile_from_html(html: str, username: str) -> Optional[Dict]:
                 results['external_url'] = match.group(1).replace('\\/', '/')
             break
 
+    # Profile picture extraction
+    pic_hd = re.search(r'"profile_pic_url_hd":"([^"]+)"', html)
+    pic = re.search(r'"profile_pic_url":"([^"]+)"', html)
+    og_img = re.search(r'property="og:image"\s+content="([^"]+)"', html) or re.search(r'content="([^"]+)"\s+property="og:image"', html)
+
+    profile_pic = ''
+    if pic_hd:
+        profile_pic = pic_hd.group(1).replace(r'\/', '/').replace('&amp;', '&')
+    elif pic:
+        profile_pic = pic.group(1).replace(r'\/', '/').replace('&amp;', '&')
+    elif og_img:
+        profile_pic = og_img.group(1).replace('&amp;', '&')
+
     if 'follower_count' not in results or results.get('follower_count', 0) == 0:
         return None
 
@@ -254,6 +269,7 @@ def _extract_profile_from_html(html: str, username: str) -> Optional[Dict]:
         'is_private': results.get('is_private', False),
         'is_business': results.get('is_business', False),
         'website': results.get('external_url', ''),
+        'profile_pic_url': profile_pic,
         'email': _extract_email(bio),
         'phone': _extract_phone(bio),
         'platform': 'instagram',

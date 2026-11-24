@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scout — Influencer Intelligence Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        lime: { 400: '#a3e635', 500: '#84cc16', 600: '#65a30d' },
+                        dark: { 50: '#1e1e1e', 100: '#181818', 200: '#141414', 300: '#111111', 400: '#0d0d0d', 500: '#0a0a0a', 600: '#080808', 700: '#050505' },
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0a0a0a; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .card { background: #141414; border: 1px solid #1e1e1e; border-radius: 16px; transition: all 0.2s; }
+        .card:hover { border-color: #2a2a2a; }
+        .tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+        .search-input { background: #111; border: 1.5px solid #222; border-radius: 14px; }
+        .search-input:focus { border-color: #a3e635; box-shadow: 0 0 0 3px rgba(163,230,53,0.08); outline:none; }
+        .btn-primary { background: #a3e635; color: #0a0a0a; border-radius: 14px; font-weight: 700; transition: all 0.2s; }
+        .btn-primary:hover { background: #bef264; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(163,230,53,0.15); }
+        .metric-card { background: #111; border: 1px solid #1a1a1a; border-radius: 14px; padding: 18px 20px; }
+        .profile-grid-card { background: #161616; border: 1px solid #1e1e1e; border-radius: 18px; padding: 24px; transition: all 0.25s; }
+        .profile-grid-card:hover { border-color: #a3e635; box-shadow: 0 0 0 1px rgba(163,230,53,0.1); }
+        .bar-segment { height: 8px; border-radius: 999px; transition: width 0.6s ease; }
+        .sidebar-icon { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: all 0.2s; color: #666; }
+        .sidebar-icon:hover, .sidebar-icon.active { background: #1a1a1a; color: #a3e635; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-panel { background: #111; border: 1px solid #1e1e1e; border-radius: 20px; }
+        .export-btn { background: #1a1a1a; border: 1px solid #252525; color: #ccc; border-radius: 10px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .export-btn:hover { background: #222; border-color: #a3e635; color: #a3e635; }
+        .region-bar { background: #1a1a1a; border-radius: 999px; height: 6px; overflow: hidden; }
+        .region-fill { height: 100%; border-radius: 999px; transition: width 0.5s ease; }
+        .avatar-ring { border: 2.5px solid #a3e635; padding: 2px; border-radius: 50%; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { animation: spin 0.8s linear infinite; border: 3px solid #222; border-top-color: #a3e635; border-radius: 50%; width: 36px; height: 36px; }
+    </style>
+</head>
+<body class="min-h-screen text-gray-300 flex">
+
+    <!-- Sidebar -->
+    <aside class="hidden md:flex flex-col items-center py-6 px-3 w-[64px] bg-[#0d0d0d] border-r border-[#1a1a1a] fixed h-full z-50">
+        <div class="w-9 h-9 rounded-xl bg-lime-400 flex items-center justify-center mb-8">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div class="flex flex-col gap-2 flex-1">
+            <div class="sidebar-icon active" title="Dashboard">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            </div>
+            <div class="sidebar-icon" title="Search">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <div class="sidebar-icon" title="Exports">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+            </div>
+            <div class="sidebar-icon" title="Settings">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 md:ml-[64px]">
+        <div class="max-w-[1360px] mx-auto px-5 md:px-8 py-6">
+
+            <!-- Top Bar -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-3xl md:text-[38px] font-black text-white tracking-tight">SCOUT</h1>
+                        <span class="tag bg-lime-400/10 text-lime-400 border border-lime-400/20">Intelligence</span>
+                    </div>
+                    <p class="text-gray-500 text-sm mt-1">Influencer research · Contact discovery · Audience demographics</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="exportAllCSV()" class="export-btn" id="exportAllBtn" style="display:none">
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export CSV
+                    </button>
+                    <div class="text-xs text-gray-600">v1.5</div>
+                </div>
+            </div>
+
+            <!-- Stats Summary (shown after first search) -->
+            <div id="statsRow" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" style="display:none">
+                <div class="metric-card">
+                    <div class="text-gray-500 text-xs font-medium mb-1">Profiles Analyzed</div>
+                    <div class="flex items-baseline gap-2">
+                        <span id="statProfiles" class="text-2xl font-black text-white">0</span>
+                        <span class="text-lime-400 text-xs font-semibold">total</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="text-gray-500 text-xs font-medium mb-1">Emails Found</div>
+                    <div class="flex items-baseline gap-2">
+                        <span id="statEmails" class="text-2xl font-black text-white">0</span>
+                        <span class="text-lime-400 text-xs font-semibold">verified</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="text-gray-500 text-xs font-medium mb-1">Avg Engagement</div>
+                    <div class="flex items-baseline gap-2">
+                        <span id="statER" class="text-2xl font-black text-white">—</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="text-gray-500 text-xs font-medium mb-1">Total Reach</div>
+                    <div class="flex items-baseline gap-2">
+                        <span id="statReach" class="text-2xl font-black text-white">0</span>
+                        <span class="text-lime-400 text-xs font-semibold">followers</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="flex flex-col sm:flex-row gap-3 mb-8">
+                <div class="relative flex-1">
+                    <span class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#555" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    </span>
+                    <input type="text" id="usernameInput" placeholder="Search Instagram username... (e.g. its_revthyyy, bunnyvox)"
+                        class="w-full search-input pl-13 pr-4 py-4 text-white placeholder-gray-600 text-sm font-medium"
+                        style="padding-left:48px"
+                        onkeypress="if(event.key==='Enter')analyzeProfile()">
+                </div>
+                <button onclick="analyzeProfile()" class="btn-primary px-8 py-4 text-sm flex items-center gap-2 justify-center">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    Analyze
+                </button>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" class="hidden text-center py-16">
+                <div class="spinner mx-auto"></div>
+                <p class="text-gray-500 mt-5 text-sm font-medium">Scraping profile, enriching contacts & building demographics...</p>
+            </div>
+
+            <!-- Error -->
+            <div id="errorAlert" class="hidden card p-5 mb-6 border-red-900/40 bg-red-950/20">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    </div>
+                    <span id="errorText" class="text-red-400 text-sm font-medium"></span>
+                </div>
+            </div>
+
+            <!-- Team Members Section Header -->
+            <div id="membersHeader" class="flex items-center justify-between mb-5" style="display:none">
+                <div>
+                    <h2 class="text-white text-lg font-bold">Analyzed Profiles</h2>
+                    <p class="text-gray-500 text-xs mt-0.5"><span id="profileCount">0</span> creators</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="clearAll()" class="export-btn text-xs">
+                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Profile Cards Grid -->
+            <div id="profilesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8"></div>
+        </div>
+    </main>
+
+    <!-- Slide-Over Detail Panel -->
+    <div id="detailOverlay" class="fixed inset-0 z-[100] hidden" onclick="closePanelOutside(event)">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div id="detailPanel" class="slide-panel absolute right-4 top-4 bottom-4 w-full max-w-[420px] overflow-y-auto p-6 fade-in">
+            <!-- Close Button -->
+            <button onclick="closePanel()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#252525] flex items-center justify-center hover:bg-[#222] transition-all z-10">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#888" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+
+            <!-- Panel Header: Photo + Name -->
+            <div class="text-center mb-6 pt-2">
+                <div class="avatar-ring mx-auto w-fit mb-4">
+                    <img id="panelAvatar" src="" class="w-24 h-24 rounded-full object-cover bg-[#1a1a1a]">
+                </div>
+                <h3 id="panelName" class="text-xl font-bold text-white"></h3>
+                <p id="panelHandle" class="text-lime-400 text-sm font-semibold mt-1"></p>
+                <div id="panelVerified" class="hidden mt-2">
+                    <span class="tag bg-blue-500/15 text-blue-400 border border-blue-500/25">✓ Verified</span>
+                </div>
+                <p id="panelBio" class="text-gray-400 text-xs mt-3 leading-relaxed whitespace-pre-line max-h-20 overflow-hidden"></p>
+            </div>
+
+            <!-- Panel Summary Stats -->
+            <div class="text-center mb-6">
+                <h4 class="text-gray-500 text-[11px] font-semibold uppercase tracking-widest mb-3">Creator Summary</h4>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="metric-card text-center">
+                    <div class="text-gray-500 text-[10px] font-medium uppercase tracking-wide">Followers</div>
+                    <div id="panelFollowers" class="text-xl font-black text-white mt-1"></div>
+                </div>
+                <div class="metric-card text-center">
+                    <div class="text-gray-500 text-[10px] font-medium uppercase tracking-wide">Engagement</div>
+                    <div id="panelER" class="text-xl font-black text-lime-400 mt-1"></div>
+                </div>
+                <div class="metric-card text-center">
+                    <div class="text-gray-500 text-[10px] font-medium uppercase tracking-wide">CPV</div>
+                    <div id="panelCPV" class="text-lg font-bold text-gray-300 mt-1"></div>
+                </div>
+                <div class="metric-card text-center">
+                    <div class="text-gray-500 text-[10px] font-medium uppercase tracking-wide">Fair Pricing</div>
+                    <div id="panelPricing" class="text-lg font-bold text-lime-400 mt-1"></div>
+                </div>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="mb-6">
+                <h4 class="text-gray-500 text-[11px] font-semibold uppercase tracking-widest mb-3">Contact Information</h4>
+                <div class="space-y-2.5">
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a]">
+                        <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#a78bfa" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-gray-500 text-[10px] font-medium">Email</div>
+                            <div id="panelEmail" class="text-white text-sm font-semibold truncate select-all"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a]">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#34d399" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-gray-500 text-[10px] font-medium">Phone</div>
+                            <div id="panelPhone" class="text-white text-sm font-semibold truncate"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a]">
+                        <div class="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center flex-shrink-0">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#f472b6" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-gray-500 text-[10px] font-medium">Niche</div>
+                            <div id="panelNiche" class="text-white text-sm font-semibold truncate"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a]">
+                        <div class="w-8 h-8 rounded-lg bg-lime-500/10 flex items-center justify-center flex-shrink-0">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#a3e635" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-gray-500 text-[10px] font-medium">Collab Readiness</div>
+                            <div id="panelCollab" class="text-lime-400 text-sm font-semibold truncate"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Demographics -->
+            <div class="mb-6">
+                <h4 class="text-gray-500 text-[11px] font-semibold uppercase tracking-widest mb-3">Audience Demographics</h4>
+                <!-- Gender -->
+                <div class="p-4 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] mb-3">
+                    <div class="flex justify-between text-xs font-semibold mb-2">
+                        <span class="text-pink-400">♀ Female <span id="panelFemale"></span></span>
+                        <span class="text-blue-400">♂ Male <span id="panelMale"></span></span>
+                    </div>
+                    <div class="flex gap-1 h-2 rounded-full overflow-hidden bg-[#1a1a1a]">
+                        <div id="panelFemaleBar" class="bar-segment bg-pink-500"></div>
+                        <div id="panelMaleBar" class="bar-segment bg-blue-500"></div>
+                    </div>
+                </div>
+                <!-- Age -->
+                <div class="p-4 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] mb-3">
+                    <div class="text-gray-500 text-[10px] font-medium uppercase mb-2">Age Distribution</div>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-400 w-12">18–24</span>
+                            <div class="flex-1 region-bar"><div id="panelAge1Bar" class="region-fill bg-lime-400"></div></div>
+                            <span id="panelAge1" class="text-xs text-white font-bold w-10 text-right"></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-400 w-12">25–34</span>
+                            <div class="flex-1 region-bar"><div id="panelAge2Bar" class="region-fill bg-lime-400/70"></div></div>
+                            <span id="panelAge2" class="text-xs text-white font-bold w-10 text-right"></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-400 w-12">35+</span>
+                            <div class="flex-1 region-bar"><div id="panelAge3Bar" class="region-fill bg-lime-400/40"></div></div>
+                            <span id="panelAge3" class="text-xs text-white font-bold w-10 text-right"></span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Regions -->
+                <div class="p-4 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a]">
+                    <div class="text-gray-500 text-[10px] font-medium uppercase mb-2">Regional Breakdown (India)</div>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-400 w-12">South</span>
+                            <div class="flex-1 region-bar"><div id="panelRegSBar" class="region-fill bg-emerald-400"></div></div>
+                            <span id="panelRegS" class="text-xs text-white font-bold w-10 text-right"></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-400 w-12">West</span>
+                            <div class="flex-1 region-bar"><div id="panelRegWBar" class="region-fill bg-emerald-400/70"></div></div>
+                            <span id="panelRegW" class="text-xs text-white font-bold w-10 text-right"></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-400 w-12">North</span>
+                            <div class="flex-1 region-bar"><div id="panelRegNBar" class="region-fill bg-emerald-400/50"></div></div>
+                            <span id="panelRegN" class="text-xs text-white font-bold w-10 text-right"></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-400 w-12">East</span>
+                            <div class="flex-1 region-bar"><div id="panelRegEBar" class="region-fill bg-emerald-400/30"></div></div>
+                            <span id="panelRegE" class="text-xs text-white font-bold w-10 text-right"></span>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-[10px] text-gray-500">Top Cities: <span id="panelCities" class="text-gray-300"></span></div>
+                </div>
+            </div>
+
+            <!-- Export Single -->
+            <button onclick="exportSingleCSV()" class="w-full btn-primary py-3.5 text-sm flex items-center justify-center gap-2 mb-3">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export This Profile as CSV
+            </button>
+        </div>
+    </div>
+
+    <script>
+    let allProfiles = [];
+    let currentProfile = null;
+    let sessionStats = { profiles: 0, emails: 0, totalFollowers: 0, erSum: 0 };
+
+    async function analyzeProfile() {
+        const input = document.getElementById('usernameInput');
+        const username = input.value.trim().replace(/@/g, '');
+        if (!username) return;
+
+        document.getElementById('loader').classList.remove('hidden');
+        document.getElementById('errorAlert').classList.add('hidden');
+
+        try {
+            const res = await fetch('/api/influencer/' + encodeURIComponent(username));
+            const json = await res.json();
+            document.getElementById('loader').classList.add('hidden');
+
+            if (res.status !== 200 || json.status !== 'success') {
+                document.getElementById('errorText').innerText = json.detail || 'Could not fetch profile. Try again.';
+                document.getElementById('errorAlert').classList.remove('hidden');
+                return;
+            }
+
+            const d = json.data;
+
+            // Check duplicate
+            if (allProfiles.find(p => p.username === d.username)) {
+                openPanel(d);
+                input.value = '';
+                return;
+            }
+
+            allProfiles.push(d);
+            addProfileCard(d);
+            updateStats(d);
+            openPanel(d);
+            input.value = '';
+
+        } catch (err) {
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('errorText').innerText = 'Connection error: ' + err.message;
+            document.getElementById('errorAlert').classList.remove('hidden');
+        }
+    }
+
+    function addProfileCard(d) {
+        const grid = document.getElementById('profilesGrid');
+        const card = document.createElement('div');
+        card.className = 'profile-grid-card cursor-pointer fade-in';
+        card.onclick = () => openPanel(d);
+
+        const pic = d.profile_pic_url || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22><rect fill=%22%23222%22 width=%2280%22 height=%2280%22/></svg>';
+        const name = (d.full_name || d.username || '').substring(0, 22);
+        const niche = d.primary_niche ? d.primary_niche.split(' · ')[0] : 'Creator';
+        const email = d.email || '';
+        const tags = [];
+        if (d.email) tags.push('<span class="tag bg-lime-400/10 text-lime-400 border border-lime-400/20">Email ✓</span>');
+        if (d.phone) tags.push('<span class="tag bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">Phone ✓</span>');
+        if (!d.email && !d.phone) tags.push('<span class="tag bg-gray-800 text-gray-500 border border-gray-700">DM Only</span>');
+
+        card.innerHTML = `
+            <div class="flex items-center gap-3 mb-4">
+                <img src="${pic}" class="w-12 h-12 rounded-full object-cover bg-[#1a1a1a] border border-[#252525]" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2248%22><rect fill=%22%23222%22 width=%2248%22 height=%2248%22/></svg>'">
+                <div class="flex-1 min-w-0">
+                    <div class="text-white font-bold text-sm truncate">${name}</div>
+                    <div class="text-gray-500 text-xs truncate">${niche}</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 mb-3 flex-wrap">${tags.join('')}</div>
+            <div class="grid grid-cols-2 gap-2 text-center">
+                <div class="bg-[#0d0d0d] rounded-lg py-2">
+                    <div class="text-white text-sm font-bold">${d.followers_formatted ? d.followers_formatted.replace(' followers','') : (d.follower_count||0).toLocaleString()}</div>
+                    <div class="text-gray-500 text-[10px]">Followers</div>
+                </div>
+                <div class="bg-[#0d0d0d] rounded-lg py-2">
+                    <div class="text-lime-400 text-sm font-bold">${d.engagement_rate || 'N/A'}</div>
+                    <div class="text-gray-500 text-[10px]">Engagement</div>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-[#1e1e1e] text-center">
+                <div class="text-lime-400 font-bold text-sm">${d.fair_pricing || 'N/A'}</div>
+            </div>
+        `;
+        grid.appendChild(card);
+    }
+
+    function updateStats(d) {
+        sessionStats.profiles++;
+        if (d.email) sessionStats.emails++;
+        sessionStats.totalFollowers += (d.follower_count || 0);
+        sessionStats.erSum += parseFloat(d.engagement_rate) || 0;
+
+        document.getElementById('statsRow').style.display = '';
+        document.getElementById('membersHeader').style.display = '';
+        document.getElementById('exportAllBtn').style.display = '';
+
+        document.getElementById('statProfiles').innerText = sessionStats.profiles;
+        document.getElementById('statEmails').innerText = sessionStats.emails;
+        const avgER = sessionStats.profiles > 0 ? (sessionStats.erSum / sessionStats.profiles).toFixed(2) + '%' : '—';
+        document.getElementById('statER').innerText = avgER;
+
+        const reach = sessionStats.totalFollowers;
+        const fmtReach = reach >= 1e7 ? (reach/1e7).toFixed(1)+'Cr' : reach >= 1e5 ? (reach/1e5).toFixed(1)+'L' : reach >= 1e3 ? (reach/1e3).toFixed(1)+'K' : reach;
+        document.getElementById('statReach').innerText = fmtReach;
+        document.getElementById('profileCount').innerText = sessionStats.profiles;
+    }
+
+    function openPanel(d) {
+        currentProfile = d;
+        const pic = d.profile_pic_url || '';
+        document.getElementById('panelAvatar').src = pic;
+        document.getElementById('panelName').innerText = d.full_name || d.username;
+        document.getElementById('panelHandle').innerText = '@' + d.username;
+        document.getElementById('panelBio').innerText = d.bio || '';
+        document.getElementById('panelVerified').classList.toggle('hidden', !d.is_verified);
+
+        document.getElementById('panelFollowers').innerText = d.followers_formatted ? d.followers_formatted.replace(' followers','') : d.follower_count;
+        document.getElementById('panelER').innerText = d.engagement_rate || 'N/A';
+        document.getElementById('panelCPV').innerText = d.cost_per_view || 'N/A';
+        document.getElementById('panelPricing').innerText = d.fair_pricing ? d.fair_pricing.replace('Fair ','') : 'N/A';
+
+        document.getElementById('panelEmail').innerText = d.email || 'Not available';
+        document.getElementById('panelPhone').innerText = d.phone || 'Not available';
+        document.getElementById('panelNiche').innerText = d.primary_niche || 'Lifestyle';
+        document.getElementById('panelCollab').innerText = d.collab_readiness || 'Via DM';
+
+        const f = parseInt(d.gender_female) || 50;
+        const m = parseInt(d.gender_male) || 50;
+        document.getElementById('panelFemale').innerText = d.gender_female || '50%';
+        document.getElementById('panelMale').innerText = d.gender_male || '50%';
+        document.getElementById('panelFemaleBar').style.width = f + '%';
+        document.getElementById('panelMaleBar').style.width = m + '%';
+
+        const a1 = parseInt(d.age_18_24) || 55;
+        const a2 = parseInt(d.age_25_34) || 30;
+        const a3 = parseInt(d.age_35_plus) || 15;
+        document.getElementById('panelAge1').innerText = d.age_18_24 || '55%';
+        document.getElementById('panelAge2').innerText = d.age_25_34 || '30%';
+        document.getElementById('panelAge3').innerText = d.age_35_plus || '15%';
+        document.getElementById('panelAge1Bar').style.width = a1 + '%';
+        document.getElementById('panelAge2Bar').style.width = a2 + '%';
+        document.getElementById('panelAge3Bar').style.width = a3 + '%';
+
+        const rS = parseInt(d.audience_region_south) || 25;
+        const rW = parseInt(d.audience_region_west) || 25;
+        const rN = parseInt(d.audience_region_north) || 25;
+        const rE = parseInt(d.audience_region_east) || 25;
+        document.getElementById('panelRegS').innerText = d.audience_region_south || '25%';
+        document.getElementById('panelRegW').innerText = d.audience_region_west || '25%';
+        document.getElementById('panelRegN').innerText = d.audience_region_north || '25%';
+        document.getElementById('panelRegE').innerText = d.audience_region_east || '25%';
+        document.getElementById('panelRegSBar').style.width = rS + '%';
+        document.getElementById('panelRegWBar').style.width = rW + '%';
+        document.getElementById('panelRegNBar').style.width = rN + '%';
+        document.getElementById('panelRegEBar').style.width = rE + '%';
+        document.getElementById('panelCities').innerText = d.top_cities || '';
+
+        document.getElementById('detailOverlay').classList.remove('hidden');
+    }
+
+    function closePanel() {
+        document.getElementById('detailOverlay').classList.add('hidden');
+    }
+
+    function closePanelOutside(e) {
+        if (e.target === document.getElementById('detailOverlay') || e.target.classList.contains('backdrop-blur-sm')) closePanel();
+    }
+
+    function clearAll() {
+        allProfiles = [];
+        sessionStats = { profiles: 0, emails: 0, totalFollowers: 0, erSum: 0 };
+        document.getElementById('profilesGrid').innerHTML = '';
+        document.getElementById('statsRow').style.display = 'none';
+        document.getElementById('membersHeader').style.display = 'none';
+        document.getElementById('exportAllBtn').style.display = 'none';
+    }
+
+    function toCSVRow(d) {
+        const fields = [
+            d.username, d.full_name, (d.bio||'').replace(/\n/g,' ').replace(/"/g,'""'),
+            d.follower_count, d.following_count, d.post_count,
+            d.is_verified, d.email, d.phone,
+            d.engagement_rate, d.cost_per_view, d.fair_pricing, d.fair_price_low, d.fair_price_high,
+            d.gender_female, d.gender_male, d.age_18_24, d.age_25_34, d.age_35_plus,
+            d.audience_region_north, d.audience_region_south, d.audience_region_west, d.audience_region_east,
+            d.top_cities, d.primary_niche, d.collab_readiness, d.profile_pic_url, d.profile_url
+        ];
+        return fields.map(f => '"' + String(f||'').replace(/"/g,'""') + '"').join(',');
+    }
+
+    function csvHeader() {
+        return 'Username,Full Name,Bio,Followers,Following,Posts,Verified,Email,Phone,Engagement Rate,CPV,Fair Pricing,Price Low,Price High,Female%,Male%,Age 18-24,Age 25-34,Age 35+,Region North,Region South,Region West,Region East,Top Cities,Niche,Collab Readiness,Profile Photo URL,Profile URL';
+    }
+
+    function downloadCSV(content, filename) {
+        const bom = '\uFEFF';
+        const blob = new Blob([bom + content], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+
+    function exportSingleCSV() {
+        if (!currentProfile) return;
+        const csv = csvHeader() + '\n' + toCSVRow(currentProfile);
+        downloadCSV(csv, currentProfile.username + '_scout_export.csv');
+    }
+
+    function exportAllCSV() {
+        if (!allProfiles.length) return;
+        const csv = csvHeader() + '\n' + allProfiles.map(toCSVRow).join('\n');
+        const ts = new Date().toISOString().slice(0,10);
+        downloadCSV(csv, 'scout_export_' + ts + '.csv');
+    }
+
+    // ESC to close panel
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+    </script>
+</body>
+</html>
